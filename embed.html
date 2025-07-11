@@ -1,425 +1,359 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chatlify | Live Chat</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chatlify | Live Chat</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getDatabase, ref, push, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
     
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyD5vw97X6s1zFG4acJd5vFZ-gtW0JcMPaI",
+      authDomain: "chatlify-database.firebaseapp.com",
+      databaseURL: "https://chatlify-database-default-rtdb.firebaseio.com",
+      projectId: "chatlify-database",
+      storageBucket: "chatlify-database.appspot.com",
+      messagingSenderId: "176144889050",
+      appId: "1:176144889050:web:93290107ab4ef56b67a1e3",
+      measurementId: "G-5E7EZCEP3K"
+    };
     
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
     
-    <!-- Firebase -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getDatabase, ref, push, onValue, remove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+    // Rank and User config
+    const RANK_CONFIGS = {
+      owner: { name: 'OWNER', color: '#ffe066', backgroundColor: '#553d00', priority: 1000 },
+      'co-owner': { name: 'CO-OWNER', color: '#a745f7', backgroundColor: '#632694', priority: 900 },
+      developer: { name: 'DEVELOPER', color: '#8305eb', backgroundColor: '#350061', priority: 850 },
+      'head-admin': { name: 'HEAD-ADMIN', color: '#e60000', backgroundColor: '#330000', priority: 800 },
+      admin: { name: 'ADMIN', color: '#ffffff', backgroundColor: '#e60000', priority: 700 },
+      'head-mod': { name: 'HEAD-MOD', color: '#004488', backgroundColor: '#002544', priority: 600 },
+      mod: { name: 'MOD', color: '#0055ff', backgroundColor: '#0044cc', priority: 500 },
+      member: { name: 'MEMBER', color: 'white', backgroundColor: '#009900', priority: 100 },
+      guest: { name: 'GUEST', color: '#888', backgroundColor: '#333', priority: 0 }
+    };
+    
+    const USER_RANKS = {
+      'Dominus_Elitus': 'owner',
+      'meancraft': 'developer',
+      'mrbat8888': 'developer',
+      'Light slayer': 'head-admin',
+      'Ricplays': 'admin',
+      'Abyssal.': 'admin',
+      'VoidDestroyerXY': 'head-admin'
+    };
+    
+    const STAFF_PASSWORDS = {
+      'Dominus_Elitus': 'DominumNetworkOwner2025',
+      'meancraft': 'DominumStaff',
+      'mrbat8888': 'DominumStaff',
+      'Light slayer': 'DominumStaff',
+      'Ricplays': 'DominumStaff',
+      'Abyssal.': 'DominumStaff',
+      'VoidDestroyerXY': 'DominumStaff'
+    };
+    
+    function getUserRank(username) {
+      if (USER_RANKS[username]) return USER_RANKS[username];
+      if (username.startsWith('Guest')) return 'guest';
+      return 'member';
+    }
+    
+    function getRankConfig(rank) {
+      return RANK_CONFIGS[rank] || RANK_CONFIGS.member;
+    }
+    
+    let messages = [];
+    let currentUsername = 'Guest' + Math.floor(Math.random() * 1000);
+    let pendingUsername = null;
+    let lastSentTime = 0;
+    
+    function renderMessages() {
+      const messagesContainer = document.getElementById('messages');
+      messagesContainer.innerHTML = '';
+      messages.forEach(message => {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message-bubble flex items-start space-x-3 mb-4 p-4 rounded-lg transition-all duration-200';
         
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyD5vw97X6s1zFG4acJd5vFZ-gtW0JcMPaI",
-            authDomain: "chatlify-database.firebaseapp.com",
-            databaseURL: "https://chatlify-database-default-rtdb.firebaseio.com",
-            projectId: "chatlify-database",
-            storageBucket: "chatlify-database.appspot.com",
-            messagingSenderId: "176144889050",
-            appId: "1:176144889050:web:93290107ab4ef56b67a1e3",
-            measurementId: "G-5E7EZCEP3K"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
+        const rank = getUserRank(message.username);
+        const rankConfig = getRankConfig(rank);
+        const platformIcon = message.tag === 'DISCORD' ? 'fab fa-discord' : 'fas fa-user';
+        const platformColor = message.tag === 'DISCORD' ? 'bg-indigo-600' : 'bg-blue-600';
+        const platformLabel = message.tag === 'DISCORD' ? 'Discord' : 'Web';
         
-        // Rank system
-        const RANK_CONFIGS = {
-            owner: { name: 'OWNER', color: '#ffe066', backgroundColor: '#553d00', priority: 1000 },
-            'co-owner': { name: 'CO-OWNER', color: '#a745f7', backgroundColor: '#632694', priority: 900 },
-            developer: { name: 'DEVELOPER', color: '#8305eb', backgroundColor: '#350061', priority: 850 },
-            'head-admin': { name: 'HEAD-ADMIN', color: '#e60000', backgroundColor: '#330000', priority: 800 },
-            admin: { name: 'ADMIN', color: '#ffffff', backgroundColor: '#e60000', priority: 700 },
-            'head-mod': { name: 'HEAD-MOD', color: '#004488', backgroundColor: '#002544', priority: 600 },
-            mod: { name: 'MOD', color: '#0055ff', backgroundColor: '#0044cc', priority: 500 },
-            member: { name: 'MEMBER', color: 'white', backgroundColor: '#009900', priority: 100 },
-            guest: { name: 'GUEST', color: '#888', backgroundColor: '#333', priority: 0 }
-        };
-
-        const USER_RANKS = {
-            'Dominus_Elitus': 'owner',
-            'meancraft': 'developer',
-            'mrbat8888': 'developer',
-            'Light slayer': 'head-admin',
-            'Ricplays': 'admin',
-            'Abyssal.': 'admin',
-            'VoidDestroyerXY': 'head-admin'
-        };
-
-        const STAFF_PASSWORDS = {
-    'Dominus_Elitus': 'DominumNetworkOwner2025',
-    'meancraft': 'DominumStaff',
-    'mrbat8888': 'DominumStaff',
-    'Light slayer': 'DominumStaff',
-    'Ricplays': 'DominumStaff',
-    'Abyssal.': 'DominumStaff',
-    'VoidDestroyerXY': 'DominumStaff'
-};
-
-        function getUserRank(username) {
-            if (USER_RANKS[username]) return USER_RANKS[username];
-            if (username.startsWith('Guest')) return 'guest';
-            return 'member';
-        }
-
-        function getRankConfig(rank) {
-            return RANK_CONFIGS[rank] || RANK_CONFIGS.member;
-        }
-
-        // Chat functionality
-        let messages = [];
-        let currentUsername = 'Guest' + Math.floor(Math.random() * 1000);
-
-        function renderMessages() {
-            const messagesContainer = document.getElementById('messages');
-            messagesContainer.innerHTML = '';
-            
-            messages.forEach(message => {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = 'message-bubble flex items-start space-x-3 mb-4 p-4 rounded-lg transition-all duration-200';
-                
-                const rank = getUserRank(message.username);
-                const rankConfig = getRankConfig(rank);
-                const platformIcon = message.tag === 'DISCORD' ? 'fab fa-discord' : 'fas fa-user';
-                const platformColor = message.tag === 'DISCORD' ? 'bg-indigo-600' : 'bg-blue-600';
-                const platformLabel = message.tag === 'DISCORD' ? 'Discord' : 'Web';
-                
-                messageDiv.innerHTML = `
-                    <div class="${platformColor} w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
-                        <i class="${platformIcon} text-white text-sm"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center flex-wrap gap-2 mb-2">
-                            <span class="text-xs text-gray-500 font-mono bg-gray-700 px-2 py-1 rounded">
-                                ${new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            <span class="rank-badge inline-flex items-center px-2 py-1 rounded text-xs font-bold"
-                                  style="color: ${rankConfig.color}; background-color: ${rankConfig.backgroundColor};">
-                                [${rankConfig.name}]
-                            </span>
-                            <span class="${platformColor} text-white inline-flex items-center px-2 py-1 rounded text-xs font-medium">
-                                <i class="${platformIcon} mr-1"></i>
-                                ${platformLabel}
-                            </span>
-                        </div>
-                        <div class="mb-2">
-                            <span class="font-bold text-white text-sm">${message.username}</span>
-                            <span class="text-gray-400 ml-1">:</span>
-                        </div>
-                        <p class="text-gray-200 leading-relaxed break-words">${message.message}</p>
-                    </div>
-                `;
-                
-                messagesContainer.appendChild(messageDiv);
-            });
-            
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-
-        function sendMessage() {
-            const input = document.getElementById('messageInput');
-            const message = input.value.trim();
-            
-            if (!message) return;
-            
-            const messageData = {
-                username: currentUsername,
-                message: message,
-                timestamp: Date.now(),
-                tag: 'WEB',
-                rank: getUserRank(currentUsername)
-            };
-            
-            push(ref(database, 'messages'), messageData);
-            input.value = '';
-        }
-
-        let pendingUsername = null;
-
-function updateUsername() {
-    const input = document.getElementById('usernameInput');
-    const newUsername = input.value.trim();
-
-    if (!newUsername) return;
-
-    const rank = getUserRank(newUsername);
-    const isStaff = rank !== 'member' && rank !== 'guest';
-
-    if (isStaff && STAFF_PASSWORDS[newUsername]) {
+        // sanitize text
+        const safeText = message.message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        
+        messageDiv.innerHTML = `
+          <div class="${platformColor} w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
+            <i class="${platformIcon} text-white text-sm"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center flex-wrap gap-2 mb-2">
+              <span class="text-xs text-gray-500 font-mono bg-gray-700 px-2 py-1 rounded">
+                ${new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+              <span class="rank-badge inline-flex items-center px-2 py-1 rounded text-xs font-bold"
+                style="color: ${rankConfig.color}; background-color: ${rankConfig.backgroundColor};">
+                [${rankConfig.name}]
+              </span>
+              <span class="${platformColor} text-white inline-flex items-center px-2 py-1 rounded text-xs font-medium">
+                <i class="${platformIcon} mr-1"></i>
+                ${platformLabel}
+              </span>
+            </div>
+            <div class="mb-2">
+              <span class="font-bold text-white text-sm">${message.username}</span>
+              <span class="text-gray-400 ml-1">:</span>
+            </div>
+            <p class="text-gray-200 leading-relaxed break-words">${safeText}</p>
+          </div>`;
+        
+        messagesContainer.appendChild(messageDiv);
+      });
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    
+    function sendMessage() {
+      const now = Date.now();
+      if (now - lastSentTime < 1500) return;
+      const input = document.getElementById('messageInput');
+      const msg = input.value.trim();
+      if (!msg || msg.length > 500) return;
+      push(ref(database, 'messages'), {
+        username: currentUsername,
+        message: msg,
+        timestamp: now,
+        tag: 'WEB',
+      });
+      input.value = '';
+      lastSentTime = now;
+    }
+    
+    function updateUsername() {
+      const input = document.getElementById('usernameInput');
+      const newUsername = input.value.trim();
+      if (!newUsername) return;
+      const rank = getUserRank(newUsername);
+      const isStaff = rank !== 'member' && rank !== 'guest';
+      if (isStaff && STAFF_PASSWORDS[newUsername]) {
         pendingUsername = newUsername;
         document.getElementById('passwordModalTitle').textContent = `Enter password for ${newUsername}`;
         document.getElementById('passwordInput').value = '';
         document.getElementById('passwordError').style.display = 'none';
         document.getElementById('passwordModal').style.display = 'block';
         return;
+      }
+      applyUsername(newUsername);
     }
-
-    applyUsername(newUsername);
-}
-
-function applyUsername(name) {
-    currentUsername = name;
-    document.getElementById('currentUsername').textContent = currentUsername;
-
-    const rank = getUserRank(currentUsername);
-    const rankConfig = getRankConfig(rank);
-    const rankDisplay = document.getElementById('currentRank');
-    rankDisplay.textContent = `[${rankConfig.name}]`;
-    rankDisplay.style.color = rankConfig.color;
-    rankDisplay.style.backgroundColor = rankConfig.backgroundColor;
-}
-
-        function closePasswordModal() {
-    document.getElementById('passwordModal').style.display = 'none';
-    pendingUsername = null;
-}
-
-function submitPassword() {
-    const enteredPassword = document.getElementById('passwordInput').value;
-    if (!pendingUsername) return;
-
-    if (enteredPassword === STAFF_PASSWORDS[pendingUsername]) {
+    
+    function applyUsername(name) {
+      currentUsername = name;
+      document.getElementById('currentUsername').textContent = name;
+      const rank = getUserRank(name);
+      const cfg = getRankConfig(rank);
+      const rd = document.getElementById('currentRank');
+      rd.textContent = `[${cfg.name}]`;
+      rd.style.color = cfg.color;
+      rd.style.backgroundColor = cfg.backgroundColor;
+    }
+    
+    function closePasswordModal() {
+      document.getElementById('passwordModal').style.display = 'none';
+      pendingUsername = null;
+    }
+    
+    function submitPassword() {
+      const pw = document.getElementById('passwordInput').value;
+      if (pendingUsername && pw === STAFF_PASSWORDS[pendingUsername]) {
         closePasswordModal();
         applyUsername(pendingUsername);
-    } else {
+      } else {
         document.getElementById('passwordError').style.display = 'block';
+      }
     }
-}
-
-        // Initialize chat
-        window.addEventListener('load', () => {
-            // Set initial username
-            document.getElementById('currentUsername').textContent = currentUsername;
-            const initialRank = getUserRank(currentUsername);
-            const initialRankConfig = getRankConfig(initialRank);
-            const rankDisplay = document.getElementById('currentRank');
-            rankDisplay.textContent = `[${initialRankConfig.name}]`;
-            rankDisplay.style.color = initialRankConfig.color;
-            rankDisplay.style.backgroundColor = initialRankConfig.backgroundColor;
-            
-            // Listen for messages
-            const messagesRef = ref(database, 'messages');
-            onValue(messagesRef, (snapshot) => {
-                messages = [];
-                const data = snapshot.val();
-                if (data) {
-                    Object.keys(data).forEach(key => {
-                        messages.push({ id: key, ...data[key] });
-                    });
-                    messages.sort((a, b) => a.timestamp - b.timestamp);
-                }
-                renderMessages();
-                document.getElementById('messageCount').textContent = messages.length;
-            });
-            
-            // Event listeners
-            document.getElementById('sendButton').addEventListener('click', sendMessage);
-            document.getElementById('messageInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') sendMessage();
-            });
-            document.getElementById('updateUsernameButton').addEventListener('click', updateUsername);
-            document.getElementById('usernameInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') updateUsername();
-            });
-        });
-    </script>
     
-    <style>
-        body {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        .message-bubble {
-            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
-            border: 1px solid rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
-        }
-        
-        .rank-badge {
-            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-            border: 1px solid rgba(0,0,0,0.2);
-        }
-        
-        .glass-effect {
-            background: rgba(255,255,255,0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .chatlify-input {
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            color: white;
-        }
-        
-        .chatlify-input:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-        }
-        
-        .chatlify-button {
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-            transition: all 0.2s;
-        }
-        
-        .chatlify-button:hover {
-            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
-            transform: translateY(-1px);
-        }
-        .modal {
-  display: none;
-  position: fixed;
-  z-index: 9999;
-  left: 0; top: 0;
-  width: 100%; height: 100%;
-  background-color: rgba(0, 0, 0, 0.7);
-}
+    window.addEventListener('load', () => {
+      document.getElementById('currentUsername').textContent = currentUsername;
+      const cfg = getRankConfig(getUserRank(currentUsername));
+      const rd = document.getElementById('currentRank');
+      rd.textContent = `[${cfg.name}]`;
+      rd.style.color = cfg.color;
+      rd.style.backgroundColor = cfg.backgroundColor;
+      
+      const messagesRef = ref(database, 'messages');
+      onValue(messagesRef, snapshot => {
+        messages = [];
+        const data = snapshot.val();
+        if (data) Object.values(data).forEach(m => messages.push(m));
+        messages.sort((a,b) => a.timestamp - b.timestamp);
+        renderMessages();
+        document.getElementById('messageCount').textContent = messages.length;
+      });
+      
+      document.getElementById('sendButton').addEventListener('click', sendMessage);
+      document.getElementById('messageInput').addEventListener('keypress', e => { if (e.key==='Enter') sendMessage(); });
+      document.getElementById('updateUsernameButton').addEventListener('click', updateUsername);
+      document.getElementById('usernameInput').addEventListener('keypress', e => { if (e.key==='Enter') updateUsername(); });
+    });
+  </script>
 
-.modal-content {
-  background-color: #1e1e1e;
-  margin: 15% auto;
-  padding: 20px;
-  border: 2px solid #888;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 400px;
-  text-align: center;
-  color: white;
-}
-
-.modal-content input {
-  padding: 10px;
-  margin-top: 10px;
-  width: 80%;
-  border-radius: 5px;
-  border: none;
-  outline: none;
-}
-
-.modal-buttons {
-  margin-top: 15px;
-}
-
-.modal-buttons button {
-  margin: 5px;
-  padding: 10px 20px;
-  background-color: #444;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.modal-buttons button:hover {
-  background-color: #666;
-}
-    </style>
+  <style>
+    body {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .message-bubble {
+      background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+    }
+    .rank-badge {
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+      border: 1px solid rgba(0,0,0,0.2);
+    }
+    .glass-effect {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .chatlify-input {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: white;
+    }
+    .chatlify-input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+    .chatlify-button {
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      transition: all 0.2s;
+    }
+    .chatlify-button:hover {
+      background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+      transform: translateY(-1px);
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+    }
+    .modal-content {
+      background-color: #1e1e1e;
+      margin: 15% auto;
+      padding: 20px;
+      border: 2px solid #888;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+      color: white;
+    }
+    .modal-content input {
+      padding: 10px;
+      margin-top: 10px;
+      width: 80%;
+      border-radius: 5px;
+      border: none;
+      outline: none;
+    }
+    .modal-buttons {
+      margin-top: 15px;
+    }
+    .modal-buttons button {
+      margin: 5px;
+      padding: 10px 20px;
+      background-color: #444;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .modal-buttons button:hover {
+      background-color: #666;
+    }
+  </style>
 </head>
 <body class="text-white">
-    <div class="min-h-screen p-4">
-        <div class="max-w-4xl mx-auto">
-            <!-- Header -->
-            <div class="glass-effect rounded-lg p-4 mb-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h1 class="text-2xl font-bold flex items-center gap-2">
-                            <i class="fas fa-comments text-blue-400"></i>
-                            Chatlify Relay
-                        </h1>
-                        <p class="text-gray-400 text-sm">Unified Discord-Web Chat System</p>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-lg font-bold" id="messageCount">0</div>
-                        <div class="text-xs text-gray-400">Messages</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- User Info -->
-            <div class="glass-effect rounded-lg p-4 mb-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <span class="text-sm text-gray-400">Username:</span>
-                        <span class="font-bold" id="currentUsername">Guest123</span>
-                        <span class="rank-badge px-2 py-1 rounded text-xs font-bold" id="currentRank">[GUEST]</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <input 
-                            type="text" 
-                            id="usernameInput" 
-                            placeholder="Enter new username" 
-                            class="chatlify-input px-3 py-1 rounded text-sm"
-                        >
-                        <button 
-                            id="updateUsernameButton" 
-                            class="chatlify-button px-3 py-1 rounded text-sm text-white"
-                        >
-                            Update
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Chat Container -->
-            <div class="glass-effect rounded-lg overflow-hidden">
-                <!-- Messages -->
-                <div class="h-96 overflow-y-auto p-4" id="messages">
-                    <div class="flex items-center justify-center h-full text-gray-400">
-                        <div class="text-center">
-                            <i class="fas fa-comments text-4xl mb-4"></i>
-                            <p>Loading messages...</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Input -->
-                <div class="border-t border-gray-600 p-4">
-                    <div class="flex items-center gap-3">
-                        <input 
-                            type="text" 
-                            id="messageInput" 
-                            placeholder="Type your message..." 
-                            class="chatlify-input flex-1 px-4 py-2 rounded-lg"
-                        >
-                        <button 
-                            id="sendButton" 
-                            class="chatlify-button px-6 py-2 rounded-lg text-white font-medium"
-                        >
-                            <i class="fas fa-paper-plane mr-2"></i>
-                            Send
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Footer -->
-            <div class="text-center mt-4 text-gray-400 text-sm">
-                <p>Chatlify Relay - Real-time Discord-Web Chat Integration</p>
-            </div>
+  <div class="min-h-screen p-4">
+    <div class="max-w-4xl mx-auto">
+      <div class="glass-effect rounded-lg p-4 mb-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-2xl font-bold flex items-center gap-2">
+              <i class="fas fa-comments text-blue-400"></i>
+              Chatlify Relay
+            </h1>
+            <p class="text-gray-400 text-sm">Unified Discord‑Web Chat System</p>
+          </div>
+          <div class="text-right">
+            <div class="text-lg font-bold" id="messageCount">0</div>
+            <div class="text-xs text-gray-400">Messages</div>
+          </div>
         </div>
+      </div>
+      <div class="glass-effect rounded-lg p-4 mb-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span class="text-sm text-gray-400">Username:</span>
+            <span class="font-bold" id="currentUsername">Guest123</span>
+            <span class="rank-badge px-2 py-1 rounded text-xs font-bold" id="currentRank">[GUEST]</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="text" id="usernameInput" placeholder="Enter new username" class="chatlify-input px-3 py-1 rounded text-sm" />
+            <button id="updateUsernameButton" class="chatlify-button px-3 py-1 rounded text-sm text-white">Update</button>
+          </div>
+        </div>
+      </div>
+      <div class="glass-effect rounded-lg overflow-hidden">
+        <div class="h-96 overflow-y-auto p-4" id="messages">
+          <div class="flex items-center justify-center h-full text-gray-400">
+            <div class="text-center">
+              <i class="fas fa-comments text-4xl mb-4"></i>
+              <p>Loading messages...</p>
+            </div>
+          </div>
+        </div>
+        <div class="border-t border-gray-600 p-4">
+          <div class="flex items-center gap-3">
+            <input type="text" id="messageInput" placeholder="Type your message..." class="chatlify-input flex-1 px-4 py-2 rounded-lg" />
+            <button id="sendButton" class="chatlify-button px-6 py-2 rounded-lg text-white font-medium">
+              <i class="fas fa-paper-plane mr-2"></i> Send
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="text-center mt-4 text-gray-400 text-sm">
+        <p>Chatlify Relay - Real-time Discord‑Web Chat Integration</p>
+      </div>
     </div>
-    <!-- Password Modal -->
-<div id="passwordModal" class="modal">
-  <div class="modal-content">
-    <h3 id="passwordModalTitle">Enter Password</h3>
-    <input type="password" id="passwordInput" placeholder="Enter password">
-    <div class="modal-buttons">
-      <button onclick="submitPassword()">Submit</button>
-      <button onclick="closePasswordModal()">Cancel</button>
-    </div>
-    <p id="passwordError" style="color: red; display: none;">Incorrect password.</p>
   </div>
-</div>
+
+  <!-- Password Modal -->
+  <div id="passwordModal" class="modal">
+    <div class="modal-content">
+      <h3 id="passwordModalTitle">Enter Password</h3>
+      <input type="password" id="passwordInput" placeholder="Enter password" />
+      <div class="modal-buttons">
+        <button onclick="submitPassword()">Submit</button>
+        <button onclick="closePasswordModal()">Cancel</button>
+      </div>
+      <p id="passwordError" style="color: red; display: none;">Incorrect password.</p>
+    </div>
+  </div>
 </body>
 </html>
