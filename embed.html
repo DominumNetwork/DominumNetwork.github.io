@@ -55,6 +55,16 @@
             'VoidDestroyerXY': 'head-admin'
         };
 
+        const STAFF_PASSWORDS = {
+    'Dominus_Elitus': 'DominumNetworkOwner2025',
+    'meancraft': 'DominumStaff',
+    'mrbat8888': 'DominumStaff',
+    'Light slayer': 'DominumStaff',
+    'Ricplays': 'DominumStaff',
+    'Abyssal.': 'DominumStaff',
+    'VoidDestroyerXY': 'DominumStaff'
+};
+
         function getUserRank(username) {
             if (USER_RANKS[username]) return USER_RANKS[username];
             if (username.startsWith('Guest')) return 'guest';
@@ -134,20 +144,31 @@
         }
 
         function updateUsername() {
-            const input = document.getElementById('usernameInput');
-            const newUsername = input.value.trim();
-            if (newUsername) {
-                currentUsername = newUsername;
-                document.getElementById('currentUsername').textContent = currentUsername;
-                
-                const rank = getUserRank(currentUsername);
-                const rankConfig = getRankConfig(rank);
-                const rankDisplay = document.getElementById('currentRank');
-                rankDisplay.textContent = `[${rankConfig.name}]`;
-                rankDisplay.style.color = rankConfig.color;
-                rankDisplay.style.backgroundColor = rankConfig.backgroundColor;
-            }
+    const input = document.getElementById('usernameInput');
+    const newUsername = input.value.trim();
+
+    if (!newUsername) return;
+
+    const rank = getUserRank(newUsername);
+    const isStaff = rank !== 'member' && rank !== 'guest';
+
+    if (isStaff && STAFF_PASSWORDS[newUsername]) {
+        const enteredPassword = prompt(`Enter password for ${newUsername}:`);
+        if (enteredPassword !== STAFF_PASSWORDS[newUsername]) {
+            alert('Incorrect password. Access denied.');
+            return;
         }
+    }
+
+    currentUsername = newUsername;
+    document.getElementById('currentUsername').textContent = currentUsername;
+
+    const rankConfig = getRankConfig(rank);
+    const rankDisplay = document.getElementById('currentRank');
+    rankDisplay.textContent = `[${rankConfig.name}]`;
+    rankDisplay.style.color = rankConfig.color;
+    rankDisplay.style.backgroundColor = rankConfig.backgroundColor;
+}
 
         // Initialize chat
         window.addEventListener('load', () => {
