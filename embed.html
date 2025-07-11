@@ -143,7 +143,9 @@
             input.value = '';
         }
 
-        function updateUsername() {
+        let pendingUsername = null;
+
+function updateUsername() {
     const input = document.getElementById('usernameInput');
     const newUsername = input.value.trim();
 
@@ -153,21 +155,44 @@
     const isStaff = rank !== 'member' && rank !== 'guest';
 
     if (isStaff && STAFF_PASSWORDS[newUsername]) {
-        const enteredPassword = prompt(`Enter password for ${newUsername}:`);
-        if (enteredPassword !== STAFF_PASSWORDS[newUsername]) {
-            alert('Incorrect password. Access denied.');
-            return;
-        }
+        pendingUsername = newUsername;
+        document.getElementById('passwordModalTitle').textContent = `Enter password for ${newUsername}`;
+        document.getElementById('passwordInput').value = '';
+        document.getElementById('passwordError').style.display = 'none';
+        document.getElementById('passwordModal').style.display = 'block';
+        return;
     }
 
-    currentUsername = newUsername;
+    applyUsername(newUsername);
+}
+
+function applyUsername(name) {
+    currentUsername = name;
     document.getElementById('currentUsername').textContent = currentUsername;
 
+    const rank = getUserRank(currentUsername);
     const rankConfig = getRankConfig(rank);
     const rankDisplay = document.getElementById('currentRank');
     rankDisplay.textContent = `[${rankConfig.name}]`;
     rankDisplay.style.color = rankConfig.color;
     rankDisplay.style.backgroundColor = rankConfig.backgroundColor;
+}
+
+        function closePasswordModal() {
+    document.getElementById('passwordModal').style.display = 'none';
+    pendingUsername = null;
+}
+
+function submitPassword() {
+    const enteredPassword = document.getElementById('passwordInput').value;
+    if (!pendingUsername) return;
+
+    if (enteredPassword === STAFF_PASSWORDS[pendingUsername]) {
+        closePasswordModal();
+        applyUsername(pendingUsername);
+    } else {
+        document.getElementById('passwordError').style.display = 'block';
+    }
 }
 
         // Initialize chat
@@ -252,6 +277,53 @@
             background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
             transform: translateY(-1px);
         }
+        .modal {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+.modal-content {
+  background-color: #1e1e1e;
+  margin: 15% auto;
+  padding: 20px;
+  border: 2px solid #888;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 400px;
+  text-align: center;
+  color: white;
+}
+
+.modal-content input {
+  padding: 10px;
+  margin-top: 10px;
+  width: 80%;
+  border-radius: 5px;
+  border: none;
+  outline: none;
+}
+
+.modal-buttons {
+  margin-top: 15px;
+}
+
+.modal-buttons button {
+  margin: 5px;
+  padding: 10px 20px;
+  background-color: #444;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.modal-buttons button:hover {
+  background-color: #666;
+}
     </style>
 </head>
 <body class="text-white">
@@ -337,5 +409,17 @@
             </div>
         </div>
     </div>
+    <!-- Password Modal -->
+<div id="passwordModal" class="modal">
+  <div class="modal-content">
+    <h3 id="passwordModalTitle">Enter Password</h3>
+    <input type="password" id="passwordInput" placeholder="Enter password">
+    <div class="modal-buttons">
+      <button onclick="submitPassword()">Submit</button>
+      <button onclick="closePasswordModal()">Cancel</button>
+    </div>
+    <p id="passwordError" style="color: red; display: none;">Incorrect password.</p>
+  </div>
+</div>
 </body>
 </html>
