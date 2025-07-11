@@ -1,0 +1,40 @@
+name: Discord Bot Host
+
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    # Keep bot running - runs every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  discord-bot:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Run Discord Bot
+      timeout-minutes: 14  # Run for 14 minutes, then restart
+      continue-on-error: true
+      run: tsx server/bot-only.ts
+      env:
+        DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+        DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
+        FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+        VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+        NODE_ENV: production
+
+    - name: Bot Status
+      run: echo "Bot cycle completed, will restart automatically"
