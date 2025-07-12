@@ -145,12 +145,14 @@
       if (!newUsername) return;
       const rank = getUserRank(newUsername);
       const isStaff = rank !== 'member' && rank !== 'guest';
-      if (isStaff && STAFF_PASSWORDS.hasOwnProperty(newUsername)) {
+      if (isStaff && STAFF_PASSWORDS[newUsername]) {
         pendingUsername = newUsername;
         document.getElementById('passwordModalTitle').textContent = `Enter password for ${newUsername}`;
         document.getElementById('passwordInput').value = '';
         document.getElementById('passwordError').style.display = 'none';
         document.getElementById('passwordModal').style.display = 'block';
+        document.getElementById('submitPasswordButton').addEventListener('click', submitPassword);
+        document.getElementById('cancelPasswordButton').addEventListener('click', closePasswordModal);
         return;
       }
       applyUsername(newUsername);
@@ -174,7 +176,7 @@
     
     function submitPassword() {
       const pw = document.getElementById('passwordInput').value;
-      if (pendingUsername && STAFF_PASSWORDS[pendingUsername] === pw) {
+      if (pendingUsername && pw === STAFF_PASSWORDS[pendingUsername]) {
         closePasswordModal();
         applyUsername(pendingUsername);
       } else {
@@ -191,199 +193,168 @@
       rd.style.backgroundColor = cfg.backgroundColor;
       
       const messagesRef = ref(database, 'messages');
-      onValue(messagesRef, (snapshot) => {
+      onValue(messagesRef, snapshot => {
         messages = [];
-        snapshot.forEach(child => {
-          messages.push(child.val());
-        });
+        const data = snapshot.val();
+        if (data) Object.values(data).forEach(m => messages.push(m));
+        messages.sort((a,b) => a.timestamp - b.timestamp);
         renderMessages();
+        document.getElementById('messageCount').textContent = messages.length;
       });
       
-      // Event Listeners
       document.getElementById('sendButton').addEventListener('click', sendMessage);
-      document.getElementById('messageInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') sendMessage();
-      });
-      
-      document.getElementById('usernameUpdateButton').addEventListener('click', updateUsername);
-      document.getElementById('usernameInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') updateUsername();
-      });
-      
-      // Password modal handlers
-      document.getElementById('passwordSubmitButton').addEventListener('click', submitPassword);
-      document.getElementById('passwordInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') submitPassword();
-      });
-      document.getElementById('passwordCancelButton').addEventListener('click', closePasswordModal);
+      document.getElementById('messageInput').addEventListener('keypress', e => { if (e.key==='Enter') sendMessage(); });
+      document.getElementById('updateUsernameButton').addEventListener('click', updateUsername);
+      document.getElementById('usernameInput').addEventListener('keypress', e => { if (e.key==='Enter') updateUsername(); });
     });
   </script>
 
   <style>
-    /* Glassmorphism and styles */
     body {
-      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-      color: white;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      height: 100vh;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    #chat-container {
-      display: flex;
-      flex-direction: column;
-      flex-grow: 1;
-      max-width: 800px;
-      margin: auto;
-      padding: 1rem;
-      background: rgba(30, 41, 59, 0.8);
-      border-radius: 16px;
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-      backdrop-filter: blur(8.5px);
-      -webkit-backdrop-filter: blur(8.5px);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-    }
-    #messages {
-      overflow-y: auto;
-      flex-grow: 1;
-      padding-right: 8px;
-      margin-bottom: 12px;
     }
     .message-bubble {
-      background: rgba(255 255 255 / 0.1);
-      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
     }
-    input, button {
-      font-size: 1rem;
-      border-radius: 8px;
-      border: none;
-      padding: 0.5rem 1rem;
+    .rank-badge {
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+      border: 1px solid rgba(0,0,0,0.2);
     }
-    input {
-      flex-grow: 1;
-      margin-right: 0.5rem;
-      background: rgba(255 255 255 / 0.1);
+    .glass-effect {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .chatlify-input {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
       color: white;
+    }
+    .chatlify-input:focus {
       outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
     }
-    input::placeholder {
-      color: #ccc;
+    .chatlify-button {
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      transition: all 0.2s;
     }
-    button {
-      background: #3b82f6;
-      color: white;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
+    .chatlify-button:hover {
+      background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+      transform: translateY(-1px);
     }
-    button:hover {
-      background: #2563eb;
-    }
-
-    /* Modal styles */
     .modal {
       display: none;
       position: fixed;
       z-index: 9999;
       left: 0; top: 0;
       width: 100%; height: 100%;
-      background-color: rgba(0,0,0,0.7);
-
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      background-color: rgba(0, 0, 0, 0.7);
     }
     .modal-content {
-      background: rgba(30, 41, 59, 0.95);
-      border-radius: 16px;
-      padding: 2rem;
-      width: 320px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+      background-color: #1e1e1e;
+      margin: 15% auto;
+      padding: 20px;
+      border: 2px solid #888;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 400px;
       text-align: center;
       color: white;
-      font-weight: 600;
     }
     .modal-content input {
-      width: 100%;
-      margin-top: 1rem;
-      padding: 0.5rem;
-      font-size: 1.1rem;
-      border-radius: 8px;
+      padding: 10px;
+      margin-top: 10px;
+      width: 80%;
+      border-radius: 5px;
       border: none;
       outline: none;
     }
     .modal-buttons {
-      margin-top: 1.5rem;
-      display: flex;
-      justify-content: space-around;
+      margin-top: 15px;
     }
     .modal-buttons button {
-      flex: 1;
-      margin: 0 0.5rem;
-      padding: 0.5rem;
-      font-size: 1rem;
-      border-radius: 8px;
+      margin: 5px;
+      padding: 10px 20px;
+      background-color: #444;
+      color: white;
       border: none;
+      border-radius: 5px;
       cursor: pointer;
-      font-weight: 600;
-      transition: background-color 0.2s ease;
     }
-    #passwordSubmitButton {
-      background: #2563eb;
-      color: white;
-    }
-    #passwordSubmitButton:hover {
-      background: #1d4ed8;
-    }
-    #passwordCancelButton {
-      background: #6b7280;
-      color: white;
-    }
-    #passwordCancelButton:hover {
-      background: #4b5563;
-    }
-    #passwordError {
-      color: #f87171;
-      margin-top: 0.5rem;
-      font-size: 0.9rem;
-      display: none;
+    .modal-buttons button:hover {
+      background-color: #666;
     }
   </style>
 </head>
-<body>
-  <div id="chat-container" class="flex flex-col h-full">
-    <header class="mb-4 flex items-center justify-between">
-      <div>
-        <span id="currentRank" class="inline-block px-2 py-1 rounded text-sm font-bold mr-2"></span>
-        <span id="currentUsername" class="font-bold text-lg"></span>
+<body class="text-white">
+  <div class="min-h-screen p-4">
+    <div class="max-w-4xl mx-auto">
+      <div class="glass-effect rounded-lg p-4 mb-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-2xl font-bold flex items-center gap-2">
+              <i class="fas fa-comments text-blue-400"></i>
+              Chatlify Relay
+            </h1>
+            <p class="text-gray-400 text-sm">Unified Discord‑Web Chat System</p>
+          </div>
+          <div class="text-right">
+            <div class="text-lg font-bold" id="messageCount">0</div>
+            <div class="text-xs text-gray-400">Messages</div>
+          </div>
+        </div>
       </div>
-      <div class="flex items-center space-x-2">
-        <input id="usernameInput" type="text" placeholder="Change username" class="px-3 py-1 rounded bg-gray-700 text-white" />
-        <button id="usernameUpdateButton" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 rounded text-white">Change</button>
+      <div class="glass-effect rounded-lg p-4 mb-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span class="text-sm text-gray-400">Username:</span>
+            <span class="font-bold" id="currentUsername">Guest123</span>
+            <span class="rank-badge px-2 py-1 rounded text-xs font-bold" id="currentRank">[GUEST]</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="text" id="usernameInput" placeholder="Enter new username" class="chatlify-input px-3 py-1 rounded text-sm" />
+            <button id="updateUsernameButton" class="chatlify-button px-3 py-1 rounded text-sm text-white">Update</button>
+          </div>
+        </div>
       </div>
-    </header>
-
-    <main id="messages" class="flex-grow overflow-y-auto mb-4"></main>
-
-    <footer class="flex items-center">
-      <input id="messageInput" type="text" placeholder="Type your message..." autocomplete="off" />
-      <button id="sendButton" aria-label="Send message">
-        <i class="fas fa-paper-plane"></i>
-      </button>
-    </footer>
+      <div class="glass-effect rounded-lg overflow-hidden">
+        <div class="h-96 overflow-y-auto p-4" id="messages">
+          <div class="flex items-center justify-center h-full text-gray-400">
+            <div class="text-center">
+              <i class="fas fa-comments text-4xl mb-4"></i>
+              <p>Loading messages...</p>
+            </div>
+          </div>
+        </div>
+        <div class="border-t border-gray-600 p-4">
+          <div class="flex items-center gap-3">
+            <input type="text" id="messageInput" placeholder="Type your message..." class="chatlify-input flex-1 px-4 py-2 rounded-lg" />
+            <button id="sendButton" class="chatlify-button px-6 py-2 rounded-lg text-white font-medium">
+              <i class="fas fa-paper-plane mr-2"></i> Send
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="text-center mt-4 text-gray-400 text-sm">
+        <p>Chatlify Relay - Real-time Discord‑Web Chat Integration</p>
+      </div>
+    </div>
   </div>
 
   <!-- Password Modal -->
   <div id="passwordModal" class="modal">
     <div class="modal-content">
-      <h2 id="passwordModalTitle">Enter password</h2>
-      <input id="passwordInput" type="password" placeholder="Password" autocomplete="off" />
-      <div id="passwordError">Incorrect password.</div>
+      <h3 id="passwordModalTitle">Enter Password</h3>
+      <input type="password" id="passwordInput" placeholder="Enter password" />
       <div class="modal-buttons">
-        <button id="passwordSubmitButton">Submit</button>
-        <button id="passwordCancelButton">Cancel</button>
+        <button id="submitPasswordButton" onclick="submitPassword()">Submit</button>
+        <button id="cancelPasswordButton" onclick="closePasswordModal()">Cancel</button>
       </div>
+      <p id="passwordError" style="color: red; display: none;">Incorrect password.</p>
     </div>
   </div>
 </body>
