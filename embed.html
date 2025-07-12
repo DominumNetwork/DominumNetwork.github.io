@@ -157,15 +157,18 @@
     }
     
     function applyUsername(name) {
-      currentUsername = name;
-      document.getElementById('currentUsername').textContent = name;
-      const rank = getUserRank(name);
-      const cfg = getRankConfig(rank);
-      const rd = document.getElementById('currentRank');
-      rd.textContent = `[${cfg.name}]`;
-      rd.style.color = cfg.color;
-      rd.style.backgroundColor = cfg.backgroundColor;
-    }
+  currentUsername = name; // ✅ This sets the global variable (already okay)
+  document.getElementById('currentUsername').textContent = name;
+  const rank = getUserRank(name);
+  const cfg = getRankConfig(rank);
+  const rd = document.getElementById('currentRank');
+  rd.textContent = `[${cfg.name}]`;
+  rd.style.color = cfg.color;
+  rd.style.backgroundColor = cfg.backgroundColor;
+
+  // ✅ Optional: Update input value as well to reflect new username
+  document.getElementById('usernameInput').value = name;
+}
     
     function closePasswordModal() {
       document.getElementById('passwordModal').style.display = 'none';
@@ -175,9 +178,8 @@
     function submitPassword() {
   const pw = document.getElementById('passwordInput').value;
   if (pendingUsername && pw === STAFF_PASSWORDS[pendingUsername]) {
-    closePasswordModal();
-    applyUsername(pendingUsername);
-    document.getElementById('usernameInput').value = pendingUsername; // ✅ restore input
+    applyUsername(pendingUsername);     // ✅ Apply username
+    closePasswordModal();               // ✅ Close modal
   } else {
     document.getElementById('passwordError').style.display = 'block';
   }
