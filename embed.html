@@ -76,6 +76,52 @@
     let currentUsername = 'Guest' + Math.floor(Math.random() * 1000);
     let pendingUsername = null;
     let lastSentTime = 0;
+
+    function updateUsername() {
+      const input = document.getElementById('usernameInput');
+      const newUsername = input.value.trim();
+      if (!newUsername) return;
+      const rank = getUserRank(newUsername);
+      const isStaff = rank !== 'member' && rank !== 'guest';
+      if (isStaff && STAFF_PASSWORDS[newUsername]) {
+        pendingUsername = newUsername;
+        document.getElementById('passwordModalTitle').textContent = `Enter password for ${newUsername}`;
+        document.getElementById('passwordInput').value = '';
+        document.getElementById('passwordError').style.display = 'none';
+        document.getElementById('passwordModal').style.display = 'block';
+        return;
+      }
+      applyUsername(newUsername);
+    }
+    
+    function applyUsername(name) {
+  currentUsername = name; // ✅ This sets the global variable (already okay)
+  document.getElementById('currentUsername').textContent = name;
+  const rank = getUserRank(name);
+  const cfg = getRankConfig(rank);
+  const rd = document.getElementById('currentRank');
+  rd.textContent = `[${cfg.name}]`;
+  rd.style.color = cfg.color;
+  rd.style.backgroundColor = cfg.backgroundColor;
+
+  // ✅ Optional: Update input value as well to reflect new username
+  document.getElementById('usernameInput').value = name;
+}
+    
+    function closePasswordModal() {
+      document.getElementById('passwordModal').style.display = 'none';
+      pendingUsername = null;
+    }
+    
+    function submitPassword() {
+  const pw = document.getElementById('passwordInput').value;
+  if (pendingUsername && pw === STAFF_PASSWORDS[pendingUsername]) {
+    applyUsername(pendingUsername);     // ✅ Apply username
+    closePasswordModal();               // ✅ Close modal
+  } else {
+    document.getElementById('passwordError').style.display = 'block';
+  }
+}
     
     function renderMessages() {
       const messagesContainer = document.getElementById('messages');
@@ -138,52 +184,6 @@
       input.value = '';
       lastSentTime = now;
     }
-    
-    function updateUsername() {
-      const input = document.getElementById('usernameInput');
-      const newUsername = input.value.trim();
-      if (!newUsername) return;
-      const rank = getUserRank(newUsername);
-      const isStaff = rank !== 'member' && rank !== 'guest';
-      if (isStaff && STAFF_PASSWORDS[newUsername]) {
-        pendingUsername = newUsername;
-        document.getElementById('passwordModalTitle').textContent = `Enter password for ${newUsername}`;
-        document.getElementById('passwordInput').value = '';
-        document.getElementById('passwordError').style.display = 'none';
-        document.getElementById('passwordModal').style.display = 'block';
-        return;
-      }
-      applyUsername(newUsername);
-    }
-    
-    function applyUsername(name) {
-  currentUsername = name; // ✅ This sets the global variable (already okay)
-  document.getElementById('currentUsername').textContent = name;
-  const rank = getUserRank(name);
-  const cfg = getRankConfig(rank);
-  const rd = document.getElementById('currentRank');
-  rd.textContent = `[${cfg.name}]`;
-  rd.style.color = cfg.color;
-  rd.style.backgroundColor = cfg.backgroundColor;
-
-  // ✅ Optional: Update input value as well to reflect new username
-  document.getElementById('usernameInput').value = name;
-}
-    
-    function closePasswordModal() {
-      document.getElementById('passwordModal').style.display = 'none';
-      pendingUsername = null;
-    }
-    
-    function submitPassword() {
-  const pw = document.getElementById('passwordInput').value;
-  if (pendingUsername && pw === STAFF_PASSWORDS[pendingUsername]) {
-    applyUsername(pendingUsername);     // ✅ Apply username
-    closePasswordModal();               // ✅ Close modal
-  } else {
-    document.getElementById('passwordError').style.display = 'block';
-  }
-}
     
     window.addEventListener('load', () => {
       document.getElementById('currentUsername').textContent = currentUsername;
