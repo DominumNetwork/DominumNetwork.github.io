@@ -151,8 +151,6 @@
         document.getElementById('passwordInput').value = '';
         document.getElementById('passwordError').style.display = 'none';
         document.getElementById('passwordModal').style.display = 'block';
-        document.getElementById('submitPasswordButton').addEventListener('click', submitPassword);
-        document.getElementById('cancelPasswordButton').addEventListener('click', closePasswordModal);
         return;
       }
       applyUsername(newUsername);
@@ -175,14 +173,15 @@
     }
     
     function submitPassword() {
-      const pw = document.getElementById('passwordInput').value;
-      if (pendingUsername && pw === STAFF_PASSWORDS[pendingUsername]) {
-        closePasswordModal();
-        applyUsername(pendingUsername);
-      } else {
-        document.getElementById('passwordError').style.display = 'block';
-      }
-    }
+  const pw = document.getElementById('passwordInput').value;
+  if (pendingUsername && pw === STAFF_PASSWORDS[pendingUsername]) {
+    closePasswordModal();
+    applyUsername(pendingUsername);
+    document.getElementById('usernameInput').value = pendingUsername; // ✅ restore input
+  } else {
+    document.getElementById('passwordError').style.display = 'block';
+  }
+}
     
     window.addEventListener('load', () => {
       document.getElementById('currentUsername').textContent = currentUsername;
@@ -206,6 +205,8 @@
       document.getElementById('messageInput').addEventListener('keypress', e => { if (e.key==='Enter') sendMessage(); });
       document.getElementById('updateUsernameButton').addEventListener('click', updateUsername);
       document.getElementById('usernameInput').addEventListener('keypress', e => { if (e.key==='Enter') updateUsername(); });
+      document.getElementById('submitPasswordButton').addEventListener('click', submitPassword);
+      document.getElementById('cancelPasswordButton').addEventListener('click', closePasswordModal);
     });
   </script>
 
