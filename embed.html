@@ -210,6 +210,13 @@
       document.getElementById('submitPasswordButton').addEventListener('click', submitPassword);
       document.getElementById('cancelPasswordButton').addEventListener('click', closePasswordModal);
     });
+
+    // Expose important functions to global window scope
+window.sendMessage = sendMessage;
+window.updateUsername = updateUsername;
+window.submitPassword = submitPassword;
+window.closePasswordModal = closePasswordModal;
+window.applyUsername = applyUsername;
   </script>
 
   <style>
