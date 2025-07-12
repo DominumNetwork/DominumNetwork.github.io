@@ -95,8 +95,10 @@
     }
     
     function applyUsername(name) {
-  currentUsername = name; // ✅ This sets the global variable (already okay)
+  currentUsername = name;
+  window.username = name; // ✅ This ensures global access elsewhere
   document.getElementById('currentUsername').textContent = name;
+
   const rank = getUserRank(name);
   const cfg = getRankConfig(rank);
   const rd = document.getElementById('currentRank');
@@ -104,7 +106,6 @@
   rd.style.color = cfg.color;
   rd.style.backgroundColor = cfg.backgroundColor;
 
-  // ✅ Optional: Update input value as well to reflect new username
   document.getElementById('usernameInput').value = name;
 }
     
